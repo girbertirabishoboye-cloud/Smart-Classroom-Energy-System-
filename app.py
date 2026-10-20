@@ -7,47 +7,116 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 
+# --------------------------------------------------
+# 1. PROJECT AND MODEL PATHS
+# --------------------------------------------------
 PROJECT_DIR = Path(__file__).resolve().parent
-MODEL_PATH = PROJECT_DIR / "models" / "smart_classroom_decision_tree.joblib"
+MODEL_DIR = PROJECT_DIR / "models"
+MODEL_PATH = MODEL_DIR / "smart_classroom_decision_tree.joblib"
 
+# --------------------------------------------------
+# 2. PAGE CONFIGURATION
+# --------------------------------------------------
 st.set_page_config(
     page_title="Smart Classroom Energy System",
     page_icon="💡",
     layout="wide"
 )
 
-@st.cache_resource
-def load_model():
-    saved = joblib.load(MODEL_PATH)
-    return saved["model"], saved["features"]
-
+# --------------------------------------------------
+# 3. MODEL FILE DIAGNOSTICS AND LOADING
+# --------------------------------------------------
 st.title("💡 Smart Classroom Energy System")
 st.caption("AI-assisted classroom lighting recommendations")
 
-if not MODEL_PATH.exists():
-    st.error(f"Model file not found: {MODEL_PATH}")
+@st.cache_resource
+def load_model(model_path, modified_time):
+    saved = joblib.load(model_path)
+
+    if isinstance(saved, dict):
+        model = saved["model"]
+        features = saved["features"]
+    else:
+        # Supports a model saved directly with joblib.dump(model, path)
+        model = saved
+        features = list(getattr(model, "feature_names_in_", []))
+
+        if not features:
+            features = ["lux", "motion", "hour"]
+
+    return model, list(features)
+
+if not MODEL_PATH.is_file():
+    st.error("The trained model file is missing from the deployed project.")
+
+    st.write("**Expected model location:**")
+    st.code(str(MODEL_PATH))
+
+    st.write("**Project directory:**")
+    st.code(str(PROJECT_DIR))
+
+    st.write("**Does the models folder exist?**")
+    st.write(MODEL_DIR.is_dir())
+
+    if MODEL_DIR.is_dir():
+        st.write("**Files currently inside models:**")
+        files = [
+            str(item.relative_to(PROJECT_DIR))
+            for item in MODEL_DIR.rglob("*")
+            if item.is_file()
+        ]
+        st.code("\n".join(files) if files else "No files found.")
+    else:
+        st.write("**Files currently in the project root:**")
+        st.code(
+            "\n".join(
+                item.name for item in PROJECT_DIR.iterdir()
+            )
+        )
+
+    st.warning(
+        "Upload and commit the actual "
+        "smart_classroom_decision_tree.joblib file "
+        "to the models folder in the GitHub repository "
+        "and ensure the deployed branch contains it."
+    )
     st.stop()
 
 try:
-    model, features = load_model()
+    model, features = load_model(
+        str(MODEL_PATH),
+        MODEL_PATH.stat().st_mtime
+    )
+
+    st.success("Decision Tree model loaded successfully.")
+
 except Exception as error:
-    st.error(f"Could not load model: {error}")
+    st.error(f"Could not load the model: {error}")
     st.stop()
 
+# --------------------------------------------------
+# 4. SESSION HISTORY
+# --------------------------------------------------
 if "history" not in st.session_state:
     st.session_state.history = []
 
+# --------------------------------------------------
+# 5. CLASSROOM INPUTS
+# --------------------------------------------------
 st.sidebar.header("Classroom Sensor Inputs")
 
 lux = st.sidebar.slider(
     "Light level (lux)", 0, 1000, 180, 10
 )
+
 motion = st.sidebar.selectbox(
     "Motion detected?", ["Yes", "No"]
 )
+
 hour = st.sidebar.slider(
     "Hour of day", 0, 23, 10
 )
+
 scheduled_day = st.sidebar.selectbox(
     "Scheduled school day?", ["Yes", "No"]
 )
@@ -62,21 +131,32 @@ values = {
     "scheduled_day": schedule_value
 }
 
+# --------------------------------------------------
+# 6. DECISION TREE PREDICTION
+# --------------------------------------------------
 try:
     input_data = pd.DataFrame(
         [[values[feature] for feature in features]],
         columns=features
     )
+
     prediction = str(model.predict(input_data)[0]).upper()
+
 except Exception as error:
     st.error(f"Prediction failed: {error}")
+    st.write("Model features:", features)
     st.stop()
 
 if prediction not in ["ON", "OFF"]:
     st.warning(f"The model returned: {prediction}")
-    st.info("Check the label format used when training your model.")
+    st.info(
+        "Check the label format used when training your model."
+    )
     st.stop()
 
+# --------------------------------------------------
+# 7. DASHBOARD METRICS
+# --------------------------------------------------
 left, middle, right = st.columns(3)
 
 left.metric("Light level", f"{lux} lux")
@@ -91,10 +171,13 @@ else:
     st.info("🌙 LIGHTS OFF recommended")
 
 st.caption(
-    "This is a model recommendation, not a physical light controller. "
-    "No real lights or sensors are connected."
+    "This is a model recommendation, not a physical light "
+    "controller. No real lights or sensors are connected."
 )
 
+# --------------------------------------------------
+# 8. SAVE PREDICTION
+# --------------------------------------------------
 if st.button("Save this prediction", type="primary"):
     record = {
         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -104,14 +187,19 @@ if st.button("Save this prediction", type="primary"):
         "Scheduled school day": scheduled_day,
         "Recommendation": prediction
     }
+
     st.session_state.history.append(record)
     st.success("Prediction saved to this session.")
 
+# --------------------------------------------------
+# 9. PREDICTION HISTORY AND CHART
+# --------------------------------------------------
 st.divider()
 st.subheader("Prediction History")
 
 if st.session_state.history:
     history_df = pd.DataFrame(st.session_state.history)
+
     st.dataframe(history_df, use_container_width=True)
 
     counts = (
@@ -120,31 +208,45 @@ if st.session_state.history:
         .rename_axis("Recommendation")
         .reset_index(name="Count")
     )
+
     fig = px.bar(
         counts,
         x="Recommendation",
         y="Count",
-        title="Saved Lighting Recommendations"
+        title="Saved Lighting Recommendations",
+        labels={
+            "Recommendation": "Lighting action",
+            "Count": "Number of predictions"
+        }
     )
+
     st.plotly_chart(fig, use_container_width=True)
 
     csv_data = history_df.to_csv(index=False).encode("utf-8")
+
     st.download_button(
         "Download history as CSV",
         data=csv_data,
         file_name="classroom_prediction_history.csv",
         mime="text/csv"
     )
-else:
-    st.info("No predictions saved yet. Change the inputs and save a prediction.")
 
+else:
+    st.info(
+        "No predictions saved yet. Change the inputs "
+        "and save a prediction."
+    )
+
+# --------------------------------------------------
+# 10. ESTIMATED ENERGY USE
+# --------------------------------------------------
 st.divider()
 st.subheader("Estimated Energy Use")
 
 st.write(
-    "Enter your classroom's light power and daily operating hours "
-    "to estimate energy consumption. These figures are estimates, "
-    "not measured electricity use."
+    "Enter your classroom's lighting power and daily "
+    "operating hours to estimate energy consumption. "
+    "These figures are estimates, not measured electricity use."
 )
 
 col1, col2, col3 = st.columns(3)
@@ -175,27 +277,41 @@ with col3:
         value=22
     )
 
-baseline_kwh = power_w * operating_hours * days_per_month / 1000
+baseline_kwh = (
+    power_w * operating_hours * days_per_month / 1000
+)
 
-st.metric("Estimated baseline monthly use", f"{baseline_kwh:.2f} kWh")
+st.metric(
+    "Estimated baseline monthly use",
+    f"{baseline_kwh:.2f} kWh"
+)
 
 if st.session_state.history:
     saved_df = pd.DataFrame(st.session_state.history)
-    on_count = (saved_df["Recommendation"] == "ON").sum()
-    total_count = len(saved_df)
 
-    # Illustrative scenario only: assumes each saved prediction
-    # represents one equal-duration observation.
+    on_count = (
+        saved_df["Recommendation"] == "ON"
+    ).sum()
+
+    total_count = len(saved_df)
     on_fraction = on_count / total_count
     scenario_kwh = baseline_kwh * on_fraction
+
     st.metric(
-        "Illustrative use if ON observations represent operating time",
+        "Illustrative use based on ON predictions",
         f"{scenario_kwh:.2f} kWh"
     )
+
     st.caption(
         "This scenario is not a verified savings measurement. "
         "Reliable energy estimates require observation durations, "
         "actual lamp power, and a defined baseline."
     )
 
-st.caption("Smart Classroom Energy System | Prototype dashboard")
+# --------------------------------------------------
+# 11. FOOTER
+# --------------------------------------------------
+st.divider()
+st.caption(
+    "Smart Classroom Energy System | Prototype dashboard"
+)
