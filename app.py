@@ -10,9 +10,53 @@ import plotly.express as px
 # --------------------------------------------------
 # 1. PROJECT AND MODEL PATHS
 # --------------------------------------------------
+
 PROJECT_DIR = Path(__file__).resolve().parent
-MODEL_DIR = PROJECT_DIR / "models"
-MODEL_PATH = MODEL_DIR / "smart_classroom_decision_tree.joblib"
+
+# Check both possible locations for the model.
+MODEL_IN_FOLDER = (
+    PROJECT_DIR / "models" / "smart_classroom_decision_tree.joblib"
+)
+
+MODEL_IN_ROOT = (
+    PROJECT_DIR / "smart_classroom_decision_tree.joblib"
+)
+
+if MODEL_IN_FOLDER.is_file():
+    MODEL_PATH = MODEL_IN_FOLDER
+elif MODEL_IN_ROOT.is_file():
+    MODEL_PATH = MODEL_IN_ROOT
+else:
+    MODEL_PATH = MODEL_IN_FOLDER
+
+st.set_page_config(
+    page_title="Smart Classroom Energy System",
+    page_icon="💡",
+    layout="wide"
+)
+
+@st.cache_resource
+def load_model():
+    saved = joblib.load(MODEL_PATH)
+    return saved["model"], saved["features"]
+
+st.title("💡 Smart Classroom Energy System")
+st.caption("AI-assisted classroom lighting recommendations")
+
+if not MODEL_PATH.is_file():
+    st.error("The trained model file was not found.")
+    st.write("Expected locations:")
+    st.code(str(MODEL_IN_FOLDER))
+    st.code(str(MODEL_IN_ROOT))
+    st.stop()
+
+st.success(f"Model file found: {MODEL_PATH.name}")
+
+try:
+    model, features = load_model()
+except Exception as error:
+    st.error(f"Could not load model: {error}")
+    st.stop()
 
 # --------------------------------------------------
 # 2. PAGE CONFIGURATION
