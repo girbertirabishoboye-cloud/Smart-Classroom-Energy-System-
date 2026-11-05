@@ -1,108 +1,277 @@
-from pathlib import Path
-from datetime import datetime
-import joblib
-import pandas as pd
-import plotly.express as px
-import streamlit as st
 
-st.set_page_config(page_title="Smart Classroom Energy System", page_icon="⚡", layout="wide")
+import streamlit as st
+import pandas as pd
+import joblib
+import os
+from datetime import datetime
+
+# =========================================================
+# SMART CLASSROOM ENERGY SYSTEM
+# Machine Learning-Based Lighting Dashboard
+# =========================================================
+
+st.set_page_config(
+    page_title="Smart Classroom Energy System",
+    page_icon="💡",
+    layout="wide"
+)
+
+# ---------------------------------------------------------
+# DASHBOARD THEME
+# ---------------------------------------------------------
 
 st.markdown("""
 <style>
-.stApp {background:#141A17;color:#F3F6F1}
-[data-testid="stSidebar"] {background:#1A241E;border-right:1px solid #3A5142}
-.block-container {max-width:1450px;padding-top:1.3rem}
-.hero {background:linear-gradient(120deg,#1E4931,#286B43,#354F35);border:1px solid #548B62;border-radius:18px;padding:26px;margin-bottom:18px}
-.hero h1 {color:white;font-size:32px;margin:5px 0}
-.hero p {color:#E0EEE2}
-div[data-testid="stMetric"] {background:#1D2721;border:1px solid #3A5142;border-radius:12px;padding:15px}
+.stApp {
+    background-color: #101827;
+    color: #F1F5F9;
+}
+[data-testid="stMetric"] {
+    background-color: #1C2940;
+    padding: 20px;
+    border-radius: 15px;
+    border: 1px solid #334155;
+}
+h1, h2, h3 {
+    color: #F1F5F9;
+}
 </style>
 """, unsafe_allow_html=True)
 
-ROOT=Path(__file__).resolve().parent
-MODEL_CANDIDATES=[ROOT/"models"/"smart_classroom_decision_tree_kaggle.joblib",
-                  ROOT/"smart_classroom_decision_tree_kaggle.joblib"]
-MODEL_PATH=next((p for p in MODEL_CANDIDATES if p.exists()),None)
-if MODEL_PATH is None:
-    st.error("Model file not found. Put smart_classroom_decision_tree_kaggle.joblib in the models folder.")
-    st.stop()
+# ---------------------------------------------------------
+# LOAD MODEL
+# ---------------------------------------------------------
+
+MODEL_PATH = "models/smart_classroom_decision_tree.joblib"
 
 @st.cache_resource
-def load_artifact(path,mtime):
-    return joblib.load(path)
-artifact=load_artifact(str(MODEL_PATH),MODEL_PATH.stat().st_mtime)
-model=artifact["model"]
-features=artifact["features"]
+def load_model():
+    if not os.path.exists(MODEL_PATH):
+        return None
 
+    loaded = joblib.load(MODEL_PATH)
+
+    # Supports a saved dictionary containing model and features
+    if isinstance(loaded, dict):
+        model = loaded.get("model")
+        features = loaded.get("features")
+    else:
+        model = loaded
+        features = ["lux", "motion", "hour"]
+
+    return model, features
+
+
+loaded_model = load_model()
+
+# ---------------------------------------------------------
+# HEADER
+# ---------------------------------------------------------
+
+st.title("💡 Smart Classroom Energy System")
 st.markdown("""
-<div class="hero">
- <div style="letter-spacing:2px;color:#E7C76A;font-weight:800;font-size:12px">SMART CAMPUS • ENERGY AWARENESS</div>
- <h1>Smart Classroom Energy System</h1>
- <p>Interactive Decision Tree classification dashboard trained with the supplied secondary smart-lighting dataset.
- Predictions display the dataset's original class codes pending verification of their official label definitions.</p>
-</div>
-""",unsafe_allow_html=True)
-st.caption(f"Model artifact: {MODEL_PATH.name} • Classifier: DecisionTreeClassifier pipeline • Dataset-driven class codes: 0, 1, 2")
-
-with st.sidebar:
-    st.header("Classroom input")
-    with st.form("predict"):
-        lux=st.slider("Ambient light (lux)",0.0,105000.0,500.0,step=50.0)
-        motion=st.selectbox("Motion detected",["No","Yes"])
-        temperature=st.slider("Temperature (°C)",-15.0,65.0,25.0,step=.5)
-        occupancy=st.slider("Occupancy count",0,230,8)
-        hour=st.slider("Hour of day",0,23,10)
-        day=st.selectbox("Day of week",["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"])
-        tod=st.selectbox("Time of day",["Morning","Afternoon","Evening","Night"])
-        weather=st.selectbox("Weather condition",["Clear","Cloudy","Foggy","Rainy"])
-        special=st.selectbox("Special event",["No","Yes"])
-        traffic=st.slider("Traffic density",0.0,70.0,22.0,step=.5)
-        speed=st.slider("Average pedestrian speed",0.0,6.0,2.9,step=.1)
-        submitted=st.form_submit_button("Run dataset-based prediction",use_container_width=True)
-
-if "history" not in st.session_state: st.session_state.history=[]
-if submitted:
-    row={
-      "ambient_light_lux":lux,"motion_detected":1 if motion=="Yes" else 0,
-      "temperature_celsius":temperature,"occupancy_count":occupancy,"hour_of_day":hour,
-      "day_of_week":day,"time_of_day":tod,"weather_condition":weather,
-      "special_event_flag":1 if special=="Yes" else 0,
-      "traffic_density":traffic,"avg_pedestrian_speed":speed
-    }
-    input_df=pd.DataFrame([row],columns=features)
-    prediction=int(model.predict(input_df)[0])
-    probabilities=model.predict_proba(input_df)[0]
-    classes=list(model.classes_)
-    conf=float(probabilities[classes.index(prediction)])
-    st.session_state.latest={"input":row,"class":prediction,"confidence":conf,"timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-    st.session_state.history.append(st.session_state.latest)
-
-latest=st.session_state.get("latest")
-if latest:
-    st.subheader("Prediction output")
-    c1,c2,c3=st.columns(3)
-    c1.metric("Predicted dataset class",f"Class {latest['class']}")
-    c2.metric("Model confidence",f"{latest['confidence']*100:.1f}%")
-    c3.metric("Prediction time",latest["timestamp"])
-    st.info("Class 0/1/2 are displayed without ON/OFF naming because the official human-readable meanings of these codes must be verified from the Kaggle dataset documentation.")
-    st.subheader("Submitted input")
-    st.dataframe(pd.DataFrame([latest["input"]]),use_container_width=True,hide_index=True)
-else:
-    st.info("Choose the classroom conditions in the sidebar and click Run dataset-based prediction.")
+### Intelligent Lighting Prediction Dashboard
+Monitor classroom conditions and predict whether lighting should be switched ON or OFF.
+""")
 
 st.divider()
-st.subheader("Prediction history")
-if st.session_state.history:
-    history=pd.DataFrame([{"Timestamp":h["timestamp"],"Predicted class":h["class"],"Confidence":round(h["confidence"],4)} for h in st.session_state.history])
-    st.dataframe(history.iloc[::-1],use_container_width=True,hide_index=True)
-    st.download_button("Download history CSV",history.to_csv(index=False).encode("utf-8"),"smart_classroom_prediction_history.csv","text/csv")
-    counts=history["Predicted class"].value_counts().sort_index().rename_axis("Class").reset_index(name="Count")
-    fig=px.bar(counts,x="Class",y="Count",text="Count",title="Prediction counts by dataset class",color="Class")
-    fig.update_layout(paper_bgcolor="#1D2721",plot_bgcolor="#1D2721",font_color="#F3F6F1")
-    st.plotly_chart(fig,use_container_width=True)
-else:
-    st.caption("History appears after the first prediction; it is session-based.")
 
-with st.expander("Methodology and limitations"):
-    st.write("The classifier was trained using a stratified 80/20 split with random state 42. Inputs include ambient light, motion, temperature, occupancy, time-derived and contextual variables. The app is a demonstration interface. It does not operate a physical light relay.")
-    st.write("Dataset citation and official class-code meanings should be confirmed against the original Kaggle dataset page before final academic submission.")
+# ---------------------------------------------------------
+# SIDEBAR
+# ---------------------------------------------------------
+
+st.sidebar.title("⚙️ Classroom Controls")
+
+lux = st.sidebar.slider(
+    "Ambient Light Level (Lux)",
+    min_value=0,
+    max_value=1000,
+    value=150
+)
+
+motion = st.sidebar.selectbox(
+    "Motion Detected",
+    options=[1, 0],
+    format_func=lambda x: "Motion Detected" if x == 1 else "No Motion"
+)
+
+hour = st.sidebar.slider(
+    "Current Hour",
+    min_value=0,
+    max_value=23,
+    value=datetime.now().hour
+)
+
+st.sidebar.caption(
+    "Adjust the sensor inputs to see the predicted lighting action."
+)
+
+# ---------------------------------------------------------
+# PREDICTION
+# ---------------------------------------------------------
+
+if loaded_model is not None:
+
+    model, features = loaded_model
+
+    input_data = pd.DataFrame(
+        [[lux, motion, hour]],
+        columns=["lux", "motion", "hour"]
+    )
+
+    # Reorder input columns to match model features
+    input_data = input_data[features]
+
+    prediction = model.predict(input_data)[0]
+
+    # Convert output into readable ON/OFF
+    if str(prediction).upper() in ["ON", "1", "LIGHT ON"]:
+        light_status = "ON"
+    else:
+        light_status = "OFF"
+
+    # -----------------------------------------------------
+    # CONFIDENCE
+    # -----------------------------------------------------
+
+    confidence = None
+
+    if hasattr(model, "predict_proba"):
+        probabilities = model.predict_proba(input_data)[0]
+        confidence = max(probabilities) * 100
+
+    # -----------------------------------------------------
+    # STATUS CARDS
+    # -----------------------------------------------------
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            label="Ambient Light",
+            value=f"{lux} Lux"
+        )
+
+    with col2:
+        st.metric(
+            label="Motion",
+            value="DETECTED" if motion == 1 else "NOT DETECTED"
+        )
+
+    with col3:
+        st.metric(
+            label="Current Hour",
+            value=f"{hour}:00"
+        )
+
+    st.divider()
+
+    # -----------------------------------------------------
+    # MAIN LIGHT STATUS DISPLAY
+    # -----------------------------------------------------
+
+    if light_status == "ON":
+
+        st.markdown("""
+        <div style="
+            background-color:#064E3B;
+            padding:35px;
+            border-radius:20px;
+            text-align:center;
+            border:3px solid #10B981;
+        ">
+            <h1 style="color:#6EE7B7;font-size:50px;">
+                💡 LIGHT ON
+            </h1>
+            <h3 style="color:white;">
+                The Decision Tree recommends switching the classroom light ON.
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+
+    else:
+
+        st.markdown("""
+        <div style="
+            background-color:#7F1D1D;
+            padding:35px;
+            border-radius:20px;
+            text-align:center;
+            border:3px solid #EF4444;
+        ">
+            <h1 style="color:#FCA5A5;font-size:50px;">
+                🌙 LIGHT OFF
+            </h1>
+            <h3 style="color:white;">
+                The Decision Tree recommends switching the classroom light OFF.
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # -----------------------------------------------------
+    # CONFIDENCE
+    # -----------------------------------------------------
+
+    if confidence is not None:
+        st.subheader("Prediction Confidence")
+        st.progress(int(confidence))
+        st.write(f"Model confidence: **{confidence:.2f}%**")
+
+    # -----------------------------------------------------
+    # PREDICTION HISTORY
+    # -----------------------------------------------------
+
+    if "history" not in st.session_state:
+        st.session_state.history = []
+
+    history_record = {
+        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Lux": lux,
+        "Motion": "Detected" if motion == 1 else "Not Detected",
+        "Hour": hour,
+        "Predicted Lighting Status": f"LIGHT {light_status}"
+    }
+
+    st.session_state.history.append(history_record)
+
+    # Avoid unlimited history growth
+    st.session_state.history = st.session_state.history[-100:]
+
+    st.divider()
+
+    st.subheader("📊 Prediction History")
+
+    history_df = pd.DataFrame(st.session_state.history)
+
+    st.dataframe(
+        history_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    csv = history_df.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        label="📥 Download Prediction History",
+        data=csv,
+        file_name="smart_classroom_prediction_history.csv",
+        mime="text/csv"
+    )
+
+else:
+
+    st.error(
+        "Decision Tree model not found. Please ensure the model file exists at:"
+    )
+
+    st.code("models/smart_classroom_decision_tree.joblib")
+
+# ---------------------------------------------------------
+# FOOTER
+# ---------------------------------------------------------
+
+st.divider()
+
+st.caption("""
+Smart Classroom Energy System | Machine Learning | Decision Tree Classification
+""")
