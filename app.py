@@ -1,406 +1,577 @@
 
+# ============================================================
+# SMART CLASSROOM ENERGY SYSTEM
+# Real KETI Room 413 Dataset
+# Logistic Regression Motion Detection Dashboard
+# ============================================================
+
+from pathlib import Path
+from datetime import datetime
+
 import streamlit as st
 import pandas as pd
 import joblib
-import os
-from datetime import datetime
 
-# =========================================================
-# SMART CLASSROOM ENERGY SYSTEM
-# Dataset-Based Decision Tree + Automatic Lighting
-# =========================================================
+
+# ------------------------------------------------------------
+# 1. PAGE CONFIGURATION
+# ------------------------------------------------------------
 
 st.set_page_config(
     page_title="Smart Classroom Energy System",
     page_icon="💡",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# =========================================================
-# PROFESSIONAL DARK THEME
-# =========================================================
 
-st.markdown("""
-<style>
-.stApp {
-    background-color: #101827;
-    color: #F1F5F9;
-}
+# ------------------------------------------------------------
+# 2. PROJECT PATHS
+# ------------------------------------------------------------
 
-h1, h2, h3 {
-    color: #F1F5F9;
-}
+PROJECT_DIR = Path(__file__).resolve().parent
 
-[data-testid="stMetric"] {
-    background-color: #1C2940;
-    padding: 18px;
-    border-radius: 14px;
-    border: 1px solid #334155;
-}
+MODEL_PATH = (
+    PROJECT_DIR
+    / "models"
+    / "smart_classroom_final_model.joblib"
+)
 
-</style>
-""", unsafe_allow_html=True)
 
-# =========================================================
-# MODEL FILE
-# =========================================================
-
-MODEL_PATH = "smart_classroom_decision_tree_kaggle(2).joblib"
+# ------------------------------------------------------------
+# 3. LOAD TRAINED MODEL
+# ------------------------------------------------------------
 
 @st.cache_resource
 def load_model():
 
-    if not os.path.exists(MODEL_PATH):
-        return None
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Model file not found: {MODEL_PATH}"
+        )
 
-    saved = joblib.load(MODEL_PATH)
+    package = joblib.load(MODEL_PATH)
 
-    model = saved["model"]
-    features = saved["features"]
-
-    return model, features, saved
-
-loaded_model = load_model()
-
-# =========================================================
-# HEADER
-# =========================================================
-
-st.title("💡 Smart Classroom Energy System")
-
-st.subheader("Intelligent Classroom Monitoring and Lighting")
-
-st.markdown("""
-The system monitors classroom environmental conditions and determines
-the appropriate lighting status automatically.
-""")
-
-st.divider()
-
-# =========================================================
-# SENSOR INPUTS
-# These inputs simulate sensor readings for dashboard testing.
-# In physical operation, these values should come from ESP8266.
-# =========================================================
-
-st.sidebar.header("📡 Classroom Sensor Data")
-
-st.sidebar.subheader("Environmental Sensors")
-
-ambient_light_lux = st.sidebar.slider(
-    "Ambient Light (Lux)",
-    min_value=0,
-    max_value=1000,
-    value=150
-)
-
-motion_detected = st.sidebar.selectbox(
-    "Motion Detection",
-    [1, 0],
-    format_func=lambda x: "Motion Detected" if x == 1 else "No Motion"
-)
-
-temperature_celsius = st.sidebar.slider(
-    "Temperature (°C)",
-    min_value=0.0,
-    max_value=50.0,
-    value=25.0
-)
-
-occupancy_count = st.sidebar.slider(
-    "Occupancy Count",
-    min_value=0,
-    max_value=100,
-    value=10
-)
-
-st.sidebar.subheader("Time Information")
-
-hour_of_day = st.sidebar.slider(
-    "Hour of Day",
-    min_value=0,
-    max_value=23,
-    value=datetime.now().hour
-)
-
-day_of_week = st.sidebar.selectbox(
-    "Day of Week",
-    [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday"
+    required_keys = [
+        "model",
+        "features",
+        "threshold",
+        "model_name"
     ]
-)
 
-if 5 <= hour_of_day < 12:
-    time_of_day = "Morning"
-elif 12 <= hour_of_day < 17:
-    time_of_day = "Afternoon"
-elif 17 <= hour_of_day < 21:
-    time_of_day = "Evening"
-else:
-    time_of_day = "Night"
+    for key in required_keys:
+        if key not in package:
+            raise ValueError(
+                f"The saved model is missing: {key}"
+            )
 
-st.sidebar.info(f"Detected Time Period: {time_of_day}")
+    return package
 
-st.sidebar.subheader("Additional Dataset Conditions")
 
-weather_condition = st.sidebar.selectbox(
-    "Weather Condition",
-    ["Clear", "Cloudy", "Rainy", "Stormy", "Other"]
-)
+try:
+    model_package = load_model()
 
-special_event_flag = st.sidebar.selectbox(
-    "Special Event",
-    [0, 1],
-    format_func=lambda x: "Yes" if x == 1 else "No"
-)
+    model = model_package["model"]
+    FEATURES = model_package["features"]
+    THRESHOLD = float(model_package["threshold"])
+    MODEL_NAME = model_package["model_name"]
 
-traffic_density = st.sidebar.slider(
-    "Traffic Density",
-    min_value=0.0,
-    max_value=100.0,
-    value=20.0
-)
+except Exception as error:
 
-avg_pedestrian_speed = st.sidebar.slider(
-    "Average Pedestrian Speed (m/s)",
-    min_value=0.0,
-    max_value=5.0,
-    value=1.2
-)
+    st.error("Unable to load the trained machine learning model.")
+    st.code(str(error))
 
-# =========================================================
-# AUTOMATIC LIGHTING CONDITIONS
-# Project rule:
-# ON if motion detected, hour 7-18 inclusive,
-# and ambient light below 300 lux.
-# Otherwise OFF.
-# =========================================================
+    st.info(
+        "Check that smart_classroom_final_model.joblib "
+        "is inside the models folder."
+    )
 
-motion_condition = motion_detected == 1
+    st.stop()
 
-time_condition = 7 <= hour_of_day <= 18
 
-darkness_condition = ambient_light_lux < 300
+# Check model feature compatibility
+EXPECTED_FEATURES = [
+    "light_level",
+    "temperature",
+    "humidity",
+    "co2",
+    "hour"
+]
 
-if (
-    motion_condition
-    and time_condition
-    and darkness_condition
-):
-    automatic_light_status = "ON"
-else:
-    automatic_light_status = "OFF"
+if FEATURES != EXPECTED_FEATURES:
 
-# =========================================================
-# DECISION TREE INPUT DATA
-# =========================================================
+    st.error(
+        "The model features do not match the dashboard inputs."
+    )
 
-input_values = {
-    "ambient_light_lux": ambient_light_lux,
-    "motion_detected": motion_detected,
-    "temperature_celsius": temperature_celsius,
-    "occupancy_count": occupancy_count,
-    "hour_of_day": hour_of_day,
-    "day_of_week": day_of_week,
-    "time_of_day": time_of_day,
-    "weather_condition": weather_condition,
-    "special_event_flag": special_event_flag,
-    "traffic_density": traffic_density,
-    "avg_pedestrian_speed": avg_pedestrian_speed
+    st.write("Expected:", EXPECTED_FEATURES)
+    st.write("Loaded:", FEATURES)
+
+    st.stop()
+
+
+# ------------------------------------------------------------
+# 4. DASHBOARD THEMES
+# ------------------------------------------------------------
+
+THEMES = {
+
+    "Emerald Forest": {
+        "background": "#071C18",
+        "card": "#102D25",
+        "primary": "#10B981",
+        "secondary": "#34D399",
+        "text": "#ECFDF5",
+        "muted": "#A7C9BA"
+    },
+
+    "Cyber Blue": {
+        "background": "#071426",
+        "card": "#10243D",
+        "primary": "#3B82F6",
+        "secondary": "#38BDF8",
+        "text": "#EFF6FF",
+        "muted": "#A9C5E8"
+    },
+
+    "Midnight": {
+        "background": "#101827",
+        "card": "#1C2940",
+        "primary": "#8B5CF6",
+        "secondary": "#A78BFA",
+        "text": "#F1F5F9",
+        "muted": "#CBD5E1"
+    }
 }
 
-# =========================================================
-# MAIN DASHBOARD
-# =========================================================
 
-col1, col2, col3, col4 = st.columns(4)
+# ------------------------------------------------------------
+# 5. SIDEBAR
+# ------------------------------------------------------------
 
-col1.metric(
-    "Ambient Light",
-    f"{ambient_light_lux} Lux"
+with st.sidebar:
+
+    st.title("💡 Smart Classroom")
+
+    st.caption("Energy Monitoring & Motion Prediction")
+
+    st.divider()
+
+    selected_theme = st.selectbox(
+        "🎨 Dashboard Theme",
+        list(THEMES.keys()),
+        index=0
+    )
+
+    st.divider()
+
+    st.subheader("🤖 Model Information")
+
+    st.write("**Algorithm:**", MODEL_NAME)
+
+    st.write("**Dataset:** KETI Room 413")
+
+    st.write("**Target:** PIR Motion Activity")
+
+    st.write(
+        "**Threshold:**",
+        round(THRESHOLD, 6)
+    )
+
+    st.divider()
+
+    st.caption(
+        "This dashboard uses the trained machine learning "
+        "model. Current sensor values are entered manually."
+    )
+
+
+# ------------------------------------------------------------
+# 6. APPLY THEME
+# ------------------------------------------------------------
+
+theme = THEMES[selected_theme]
+
+st.markdown(
+    f"""
+    <style>
+
+    .stApp {{
+        background-color: {theme["background"]};
+        color: {theme["text"]};
+    }}
+
+    [data-testid="stHeader"] {{
+        background-color: {theme["background"]};
+    }}
+
+    [data-testid="stSidebar"] {{
+        background-color: {theme["card"]};
+    }}
+
+    [data-testid="stMetric"] {{
+        background-color: {theme["card"]};
+        border: 1px solid {theme["primary"]};
+        padding: 18px;
+        border-radius: 12px;
+    }}
+
+    [data-testid="stMetricValue"] {{
+        color: {theme["secondary"]};
+    }}
+
+    [data-testid="stMetricLabel"] {{
+        color: {theme["text"]};
+    }}
+
+    div.stButton > button {{
+        background-color: {theme["primary"]};
+        color: white;
+        border-radius: 9px;
+        border: none;
+        padding: 10px 20px;
+        font-weight: bold;
+    }}
+
+    div.stButton > button:hover {{
+        background-color: {theme["secondary"]};
+        color: #071426;
+    }}
+
+    .main-title {{
+        font-size: 32px;
+        font-weight: 800;
+        color: {theme["secondary"]};
+    }}
+
+    .subtitle {{
+        color: {theme["muted"]};
+        font-size: 15px;
+    }}
+
+    .info-card {{
+        background-color: {theme["card"]};
+        padding: 18px;
+        border-radius: 12px;
+        border-left: 4px solid {theme["primary"]};
+        margin-bottom: 12px;
+    }}
+
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
-col2.metric(
-    "Motion",
-    "DETECTED" if motion_detected == 1 else "NOT DETECTED"
+
+# ------------------------------------------------------------
+# 7. SESSION STATE
+# ------------------------------------------------------------
+
+if "prediction_history" not in st.session_state:
+
+    st.session_state.prediction_history = []
+
+
+# ------------------------------------------------------------
+# 8. DASHBOARD HEADER
+# ------------------------------------------------------------
+
+st.markdown(
+    '<div class="main-title">'
+    '💡 SMART CLASSROOM ENERGY SYSTEM'
+    '</div>',
+    unsafe_allow_html=True
 )
 
-col3.metric(
-    "Temperature",
-    f"{temperature_celsius:.1f} °C"
+st.markdown(
+    '<div class="subtitle">'
+    'Machine Learning-Based Classroom Environmental '
+    'Monitoring and Motion Activity Prediction'
+    '</div>',
+    unsafe_allow_html=True
 )
 
-col4.metric(
-    "Occupancy",
-    occupancy_count
-)
+st.write("")
 
-st.divider()
+# Status information
+col1, col2, col3 = st.columns(3)
 
-# =========================================================
-# AUTOMATIC LIGHT STATUS
-# =========================================================
-
-if automatic_light_status == "ON":
-
-    st.markdown("""
-    <div style="
-        background-color:#064E3B;
-        border:3px solid #10B981;
-        border-radius:20px;
-        padding:35px;
-        text-align:center;
-    ">
-        <h1 style="color:#6EE7B7;font-size:55px;">
-            💡 LIGHT ON
-        </h1>
-        <h3 style="color:white;">
-            The classroom lighting conditions require the lamps to be ON.
-        </h3>
-        <h4 style="color:#A7F3D0;">
-            AUTOMATIC LIGHTING DECISION
-        </h4>
-    </div>
-    """, unsafe_allow_html=True)
-
-else:
-
-    st.markdown("""
-    <div style="
-        background-color:#7F1D1D;
-        border:3px solid #EF4444;
-        border-radius:20px;
-        padding:35px;
-        text-align:center;
-    ">
-        <h1 style="color:#FCA5A5;font-size:55px;">
-            🌙 LIGHT OFF
-        </h1>
-        <h3 style="color:white;">
-            The classroom lighting conditions do not require the lamps to be ON.
-        </h3>
-        <h4 style="color:#FECACA;">
-            AUTOMATIC LIGHTING DECISION
-        </h4>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.divider()
-
-# =========================================================
-# CONDITION ANALYSIS
-# =========================================================
-
-st.subheader("🔍 Lighting Condition Analysis")
-
-conditions_df = pd.DataFrame({
-    "Condition": [
-        "Motion Detected",
-        "Operating Hour (07:00–18:00)",
-        "Ambient Light Below 300 Lux"
-    ],
-    "Current Result": [
-        "SATISFIED" if motion_condition else "NOT SATISFIED",
-        "SATISFIED" if time_condition else "NOT SATISFIED",
-        "SATISFIED" if darkness_condition else "NOT SATISFIED"
-    ]
-})
-
-st.dataframe(
-    conditions_df,
-    use_container_width=True,
-    hide_index=True
-)
-
-# =========================================================
-# DECISION TREE PREDICTION
-# =========================================================
-
-st.divider()
-
-st.subheader("🌳 Dataset Decision Tree Prediction")
-
-if loaded_model is not None:
-
-    model, features, saved_details = loaded_model
-
-    input_df = pd.DataFrame([input_values])
-
-    input_df = input_df[features]
-
-    tree_prediction = model.predict(input_df)[0]
-
+with col1:
     st.metric(
-        "Original Dataset Predicted Class",
-        str(tree_prediction)
+        "Machine Learning Algorithm",
+        MODEL_NAME
+    )
+
+with col2:
+    st.metric(
+        "Test Accuracy",
+        "89.83%"
+    )
+
+with col3:
+    st.metric(
+        "Motion Recall",
+        "62.71%"
+    )
+
+st.divider()
+
+
+# ------------------------------------------------------------
+# 9. SENSOR INPUT SECTION
+# ------------------------------------------------------------
+
+st.subheader("🌡️ Classroom Sensor Readings")
+
+st.caption(
+    "Enter the current environmental readings. "
+    "The model will estimate whether PIR motion activity "
+    "is present."
+)
+
+with st.form("sensor_prediction_form"):
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        light_level = st.number_input(
+            "💡 Light Level",
+            min_value=0.0,
+            max_value=100000.0,
+            value=55.0,
+            step=1.0,
+            help="Light sensor measurement in the dataset."
+        )
+
+        temperature = st.number_input(
+            "🌡️ Temperature (°C)",
+            min_value=-50.0,
+            max_value=100.0,
+            value=24.0,
+            step=0.5
+        )
+
+        humidity = st.number_input(
+            "💧 Relative Humidity (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=50.0,
+            step=1.0
+        )
+
+    with col2:
+
+        co2 = st.number_input(
+            "🌫️ CO₂ Level (ppm)",
+            min_value=0.0,
+            max_value=100000.0,
+            value=475.0,
+            step=10.0
+        )
+
+        hour = st.slider(
+            "🕒 Hour of the Day",
+            min_value=0,
+            max_value=23,
+            value=10
+        )
+
+        st.info(
+            "The model uses these five inputs. "
+            "The PIR motion label is the prediction target, "
+            "not a direct input."
+        )
+
+    predict_button = st.form_submit_button(
+        "🔍 PREDICT MOTION ACTIVITY",
+        use_container_width=True
+    )
+
+
+# ------------------------------------------------------------
+# 10. MACHINE LEARNING PREDICTION
+# ------------------------------------------------------------
+
+if predict_button:
+
+    input_data = pd.DataFrame(
+        [[
+            light_level,
+            temperature,
+            humidity,
+            co2,
+            hour
+        ]],
+        columns=FEATURES
+    )
+
+    try:
+
+        probability = float(
+            model.predict_proba(input_data)[0][1]
+        )
+
+        prediction = int(
+            probability >= THRESHOLD
+        )
+
+        if prediction == 1:
+
+            status = "MOTION DETECTED"
+            explanation = (
+                "The model predicts PIR motion activity."
+            )
+
+        else:
+
+            status = "NO MOTION DETECTED"
+            explanation = (
+                "The model predicts no PIR motion activity."
+            )
+
+        timestamp = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        # Save prediction
+        record = {
+            "Timestamp": timestamp,
+            "Light Level": light_level,
+            "Temperature": temperature,
+            "Humidity": humidity,
+            "CO2": co2,
+            "Hour": hour,
+            "Motion Probability (%)": round(
+                probability * 100, 2
+            ),
+            "Threshold (%)": round(
+                THRESHOLD * 100, 2
+            ),
+            "Prediction": status
+        }
+
+        st.session_state.prediction_history.append(
+            record
+        )
+
+        st.session_state.latest_prediction = {
+            "status": status,
+            "probability": probability,
+            "explanation": explanation
+        }
+
+    except Exception as error:
+
+        st.error("Prediction failed.")
+        st.exception(error)
+
+
+# ------------------------------------------------------------
+# 11. DISPLAY LATEST PREDICTION
+# ------------------------------------------------------------
+
+if "latest_prediction" in st.session_state:
+
+    result = st.session_state.latest_prediction
+
+    st.divider()
+
+    st.subheader("📊 Machine Learning Prediction Result")
+
+    result_col1, result_col2 = st.columns(2)
+
+    with result_col1:
+
+        if result["status"] == "MOTION DETECTED":
+
+            st.error("🚶 MOTION DETECTED")
+
+        else:
+
+            st.success("🟢 NO MOTION DETECTED")
+
+        st.write(result["explanation"])
+
+    with result_col2:
+
+        st.metric(
+            "Motion Probability",
+            f'{result["probability"] * 100:.2f}%'
+        )
+
+        st.metric(
+            "Selected Threshold",
+            f"{THRESHOLD * 100:.2f}%"
+        )
+
+    st.progress(
+        min(max(result["probability"], 0.0), 1.0)
     )
 
     st.caption(
-        "This is the original classification output of the trained "
-        "Decision Tree. The dataset class meanings 0, 1, and 2 must "
-        "be verified before interpreting them as lighting actions."
+        "The probability is the model's estimated probability "
+        "of motion activity. It is not a guarantee of actual "
+        "human presence."
     )
 
-    if hasattr(model, "predict_proba"):
 
-        probabilities = model.predict_proba(input_df)[0]
-
-        confidence = max(probabilities) * 100
-
-        st.write("Decision Tree Prediction Confidence")
-
-        st.progress(int(confidence))
-
-        st.write(f"{confidence:.2f}%")
-
-else:
-
-    st.error(
-        "Model file not found. Place "
-        "smart_classroom_decision_tree_kaggle(2).joblib "
-        "in the same folder as app.py."
-    )
-
-# =========================================================
-# PREDICTION HISTORY
-# =========================================================
-
-if "history" not in st.session_state:
-    st.session_state.history = []
+# ------------------------------------------------------------
+# 12. MODEL PERFORMANCE
+# ------------------------------------------------------------
 
 st.divider()
 
-st.subheader("📊 Classroom Monitoring History")
+st.subheader("📈 Model Performance – Final Test Dataset")
 
-if st.button("Save Current Monitoring Record"):
+st.caption(
+    "These are the recorded results from the held-out "
+    "KETI Room 413 test period, not live dashboard accuracy."
+)
 
-    record = {
-        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Ambient Light Lux": ambient_light_lux,
-        "Motion": motion_detected,
-        "Temperature Celsius": temperature_celsius,
-        "Occupancy": occupancy_count,
-        "Hour": hour_of_day,
-        "Day": day_of_week,
-        "Time Period": time_of_day,
-        "Weather": weather_condition,
-        "Special Event": special_event_flag,
-        "Traffic Density": traffic_density,
-        "Pedestrian Speed": avg_pedestrian_speed,
-        "Automatic Light Status": automatic_light_status
-    }
+metric1, metric2, metric3, metric4 = st.columns(4)
 
-    st.session_state.history.append(record)
+metric1.metric("Accuracy", "89.83%")
+metric2.metric("Precision", "15.55%")
+metric3.metric("Recall", "62.71%")
+metric4.metric("F1-score", "0.2492")
 
-if st.session_state.history:
+st.write("**Final Test Confusion Matrix**")
 
-    history_df = pd.DataFrame(st.session_state.history)
+confusion_data = pd.DataFrame(
+    [
+        [11592, 1206],
+        [132, 222]
+    ],
+    index=["Actual No Motion", "Actual Motion"],
+    columns=["Predicted No Motion", "Predicted Motion"]
+)
+
+st.dataframe(
+    confusion_data,
+    use_container_width=True
+)
+
+st.warning(
+    "The model detects 62.71% of actual motion cases, "
+    "but its 15.55% precision indicates many false alarms. "
+    "Further improvement is needed before automatic control."
+)
+
+
+# ------------------------------------------------------------
+# 13. PREDICTION HISTORY
+# ------------------------------------------------------------
+
+st.divider()
+
+st.subheader("📋 Prediction History")
+
+if st.session_state.prediction_history:
+
+    history_df = pd.DataFrame(
+        st.session_state.prediction_history
+    )
 
     st.dataframe(
         history_df,
@@ -408,61 +579,127 @@ if st.session_state.history:
         hide_index=True
     )
 
-    csv_data = history_df.to_csv(index=False).encode("utf-8")
+    # Prediction count
+    total_predictions = len(history_df)
+
+    motion_count = (
+        history_df["Prediction"] == "MOTION DETECTED"
+    ).sum()
+
+    no_motion_count = (
+        history_df["Prediction"] == "NO MOTION DETECTED"
+    ).sum()
+
+    h1, h2, h3 = st.columns(3)
+
+    h1.metric(
+        "Total Predictions",
+        total_predictions
+    )
+
+    h2.metric(
+        "Motion Predictions",
+        int(motion_count)
+    )
+
+    h3.metric(
+        "No Motion Predictions",
+        int(no_motion_count)
+    )
+
+    # History chart
+    chart_data = pd.DataFrame({
+        "Prediction": [
+            "Motion Detected",
+            "No Motion"
+        ],
+        "Count": [
+            int(motion_count),
+            int(no_motion_count)
+        ]
+    })
+
+    st.write("**Prediction Distribution**")
+
+    st.bar_chart(
+        chart_data.set_index("Prediction")
+    )
+
+    # CSV download
+    csv_data = history_df.to_csv(
+        index=False
+    ).encode("utf-8")
 
     st.download_button(
-        "📥 Download Monitoring History",
+        label="⬇️ Download Prediction History (CSV)",
         data=csv_data,
-        file_name="smart_classroom_monitoring_history.csv",
+        file_name="smart_classroom_prediction_history.csv",
         mime="text/csv"
     )
 
-    if st.button("Clear History"):
+    if st.button("🗑️ Clear Prediction History"):
 
-        st.session_state.history = []
+        st.session_state.prediction_history = []
+
+        if "latest_prediction" in st.session_state:
+            del st.session_state.latest_prediction
 
         st.rerun()
 
 else:
 
-    st.info("Monitoring records will appear here.")
+    st.info(
+        "No predictions yet. Enter sensor readings "
+        "and click Predict Motion Activity."
+    )
 
-# =========================================================
-# MODEL INFORMATION
-# =========================================================
 
-with st.expander("📘 Model Information"):
-
-    st.write("Algorithm: Decision Tree Classifier")
-
-    if loaded_model is not None:
-
-        model, features, saved_details = loaded_model
-
-        st.write("Model Features:")
-
-        st.write(features)
-
-        st.write("Target Variable:")
-
-        st.write(saved_details.get("target"))
-
-        st.write("Dataset Class Codes:")
-
-        st.write(saved_details.get("class_codes"))
-
-        st.write("Dataset Note:")
-
-        st.write(saved_details.get("dataset_note"))
-
-# =========================================================
-# FOOTER
-# =========================================================
+# ------------------------------------------------------------
+# 14. PROJECT INFORMATION
+# ------------------------------------------------------------
 
 st.divider()
 
-st.caption("""
-Smart Classroom Energy System |
-Machine Learning-Based Intelligent Lighting |
-Decision Tree Classification
-""")
+st.subheader("ℹ️ About This Project")
+
+st.markdown(
+    """
+    **Project:** Smart Classroom Energy System
+
+    **Dataset:** KETI Smart Building System – Room 413
+
+    **Machine Learning Algorithm:** Logistic Regression
+
+    **Prediction Target:** PIR motion activity
+
+    **Input Features:**
+    - Light level
+    - Temperature
+    - Relative humidity
+    - CO₂ concentration
+    - Hour of the day
+
+    **Application:** Classroom environmental monitoring
+    and motion activity prediction.
+    """
+)
+
+st.info(
+    "The dashboard currently supports manual sensor input. "
+    "ESP8266 live monitoring and physical relay control "
+    "are separate integration tasks. This model does not "
+    "directly predict actual light-switch ON/OFF status."
+)
+
+
+# ------------------------------------------------------------
+# 15. FOOTER
+# ------------------------------------------------------------
+
+st.divider()
+
+st.caption(
+    "Smart Classroom Energy System | "
+    "KETI Room 413 Dataset | "
+    "Machine Learning Dashboard"
+)
