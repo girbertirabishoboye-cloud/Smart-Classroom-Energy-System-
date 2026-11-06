@@ -5,6 +5,7 @@ from datetime import datetime
 import joblib
 import pandas as pd
 import plotly.express as px
+import plotly.figure_factory as ff
 import streamlit as st
 
 
@@ -20,7 +21,7 @@ st.set_page_config(
 
 
 # =========================================================
-# 2. PROFESSIONAL EMERALD, CHARCOAL & GOLD THEME
+# 2. THEME
 # =========================================================
 st.markdown(
     """
@@ -37,7 +38,7 @@ st.markdown(
         --muted: #B6C5B9;
     }
 
-    .stApp, [data-testid="stAppViewContainer"] {
+    .stApp {
         background: var(--background);
         color: var(--text);
     }
@@ -57,41 +58,27 @@ st.markdown(
         color: var(--text);
     }
 
-    .stApp h1, .stApp h2, .stApp h3,
-    .stApp p, .stApp label {
+    h1, h2, h3, p, label {
         color: var(--text);
     }
 
     .hero {
-        background: linear-gradient(120deg, #1E4931 0%, #286B43 58%, #354F35 100%);
+        background: linear-gradient(120deg, #1E4931, #286B43, #354F35);
         border: 1px solid #548B62;
         border-radius: 20px;
         padding: 32px;
         margin-bottom: 22px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.18);
     }
 
     .hero h1 {
-        color: #FFFFFF;
+        color: white;
         font-size: 34px;
         font-weight: 800;
-        line-height: 1.2;
-        margin: 8px 0 12px 0;
     }
 
     .hero p {
         color: #E0EEE2;
-        font-size: 15px;
         line-height: 1.7;
-        margin: 0;
-    }
-
-    .eyebrow {
-        color: var(--gold);
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        text-transform: uppercase;
     }
 
     .section-heading {
@@ -99,12 +86,6 @@ st.markdown(
         font-size: 21px;
         font-weight: 750;
         margin: 16px 0 12px 0;
-    }
-
-    .small-muted {
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.6;
     }
 
     .panel {
@@ -119,29 +100,19 @@ st.markdown(
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 15px;
-        padding: 18px 20px;
-        min-height: 120px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.12);
-    }
-
-    div[data-testid="stMetricLabel"] {
-        color: var(--muted) !important;
+        padding: 18px;
+        min-height: 115px;
     }
 
     div[data-testid="stMetricValue"] {
-        color: #FFFFFF !important;
+        color: white !important;
         font-weight: 800;
-    }
-
-    div[data-testid="stMetricDelta"] {
-        color: var(--gold) !important;
     }
 
     .recommendation {
         border-radius: 16px;
         padding: 23px;
         margin: 8px 0 16px 0;
-        background: var(--surface);
     }
 
     .recommendation-on {
@@ -157,61 +128,29 @@ st.markdown(
     }
 
     .recommendation h2 {
-        color: #FFFFFF;
+        color: white;
         font-size: 25px;
-        margin: 0 0 8px 0;
     }
 
     .recommendation p {
         color: #D5E0D6;
-        font-size: 14px;
         line-height: 1.6;
-        margin: 0;
-    }
-
-    .status-pill {
-        display: inline-block;
-        padding: 5px 11px;
-        border-radius: 30px;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        margin-bottom: 12px;
-        background: rgba(255,255,255,0.09);
-        color: var(--gold);
     }
 
     .stButton > button,
-    .stDownloadButton > button,
-    [data-testid="stFormSubmitButton"] > button {
+    .stDownloadButton > button {
         background: #347C50;
-        color: #FFFFFF;
+        color: white;
         border: 1px solid #68A779;
         border-radius: 10px;
         min-height: 43px;
         font-weight: 700;
-        transition: 0.2s ease;
     }
 
     .stButton > button:hover,
-    .stDownloadButton > button:hover,
-    [data-testid="stFormSubmitButton"] > button:hover {
+    .stDownloadButton > button:hover {
         background: #438F60;
-        color: #FFFFFF;
         border-color: var(--gold);
-    }
-
-    .stSelectbox div[data-baseweb="select"] > div,
-    .stNumberInput div[data-baseweb="input"],
-    .stTextInput div[data-baseweb="input"] {
-        background: #25332A;
-        border-color: #526B57;
-    }
-
-    .stSelectbox div[data-baseweb="select"] *,
-    .stNumberInput input,
-    .stTextInput input {
-        color: #FFFFFF !important;
     }
 
     .stTabs [data-baseweb="tab-list"] {
@@ -222,27 +161,9 @@ st.markdown(
         padding: 6px;
     }
 
-    .stTabs [data-baseweb="tab"] {
-        color: #D4E0D5;
-        border-radius: 8px;
-    }
-
     .stTabs [aria-selected="true"] {
         background: #347C50 !important;
-        color: #FFFFFF !important;
-    }
-
-    div[data-testid="stDataFrame"] {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-    }
-
-    div[data-testid="stAlert"] {
-        border-radius: 10px;
-    }
-
-    hr {
-        border-color: var(--border);
+        color: white !important;
     }
 
     .footer {
@@ -252,20 +173,6 @@ st.markdown(
         line-height: 1.8;
         padding: 25px 0 8px 0;
     }
-
-    @media (max-width: 768px) {
-        .block-container {
-            padding: 1rem;
-        }
-
-        .hero {
-            padding: 22px;
-        }
-
-        .hero h1 {
-            font-size: 26px;
-        }
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -273,13 +180,15 @@ st.markdown(
 
 
 # =========================================================
-# 3. LOAD THE EXISTING TRAINED MACHINE-LEARNING MODEL
+# 3. LOAD MODEL
 # =========================================================
 PROJECT_DIR = Path(__file__).resolve().parent
 
 MODEL_LOCATIONS = [
     PROJECT_DIR / "models" / "smart_classroom_decision_tree.joblib",
+    PROJECT_DIR / "models" / "smart_classroom_final_model.joblib",
     PROJECT_DIR / "smart_classroom_decision_tree.joblib",
+    PROJECT_DIR / "smart_classroom_final_model.joblib",
 ]
 
 MODEL_PATH = next(
@@ -297,9 +206,7 @@ def load_model(model_path, modified_time):
         features = list(saved.get("features", []))
     else:
         model = saved
-        features = list(
-            getattr(model, "feature_names_in_", [])
-        )
+        features = list(getattr(model, "feature_names_in_", []))
 
     if not features:
         features = ["lux", "motion", "hour"]
@@ -308,17 +215,16 @@ def load_model(model_path, modified_time):
 
 
 if MODEL_PATH is None:
-    st.error(
-        "The trained model could not be found. Upload "
-        "'smart_classroom_decision_tree.joblib' to the root "
-        "of your GitHub repository, alongside app.py."
-    )
+    st.error("Trained model file not found.")
+
     st.code(
         "Smart-Classroom-Energy-System-/\n"
         "├── app.py\n"
         "├── requirements.txt\n"
-        "└── smart_classroom_decision_tree.joblib"
+        "└── models/\n"
+        "    └── smart_classroom_decision_tree.joblib"
     )
+
     st.stop()
 
 
@@ -328,29 +234,74 @@ try:
         MODEL_PATH.stat().st_mtime,
     )
 except Exception as exc:
-    st.error(
-        "The model file exists, but it could not be loaded. "
-        "Check that it was saved correctly and that the "
-        "scikit-learn version is compatible."
-    )
-    st.caption(f"Technical detail: {exc}")
+    st.error("Unable to load the trained model.")
+    st.caption(str(exc))
     st.stop()
 
 
 # =========================================================
-# 4. HEADER
+# 4. KAGGLE MODEL EVALUATION RESULTS
+# =========================================================
+# These results are entered from the user's Kaggle output.
+# Confusion matrix order:
+# [[True Negative, False Positive],
+#  [False Negative, True Positive]]
+
+EVALUATION = {
+    "model_name": "Logistic Regression",
+    "threshold": 0.724513,
+    "accuracy": 0.8983,
+    "precision_motion": 0.1555,
+    "recall_motion": 0.6271,
+    "f1_motion": 0.2492,
+    "confusion_matrix": [
+        [11592, 1206],
+        [132, 222],
+    ],
+    "classification_report": {
+        "No Motion": {
+            "precision": 0.99,
+            "recall": 0.91,
+            "f1-score": 0.95,
+            "support": 12798,
+        },
+        "Motion Detected": {
+            "precision": 0.16,
+            "recall": 0.63,
+            "f1-score": 0.25,
+            "support": 354,
+        },
+        "macro avg": {
+            "precision": 0.57,
+            "recall": 0.77,
+            "f1-score": 0.60,
+            "support": 13152,
+        },
+        "weighted avg": {
+            "precision": 0.97,
+            "recall": 0.90,
+            "f1-score": 0.93,
+            "support": 13152,
+        },
+    },
+}
+
+
+# =========================================================
+# 5. HEADER
 # =========================================================
 st.markdown(
     """
     <div class="hero">
-        <div class="eyebrow">SMART CAMPUS • INTELLIGENT ENERGY</div>
+        <div style="color:#E7C76A;font-weight:800;letter-spacing:2px;">
+            SMART CAMPUS • INTELLIGENT ENERGY
+        </div>
         <h1>Smart Classroom Energy System</h1>
         <p>
-            An intelligent classroom lighting dashboard that uses a
-            trained machine-learning model to recommend whether lights
-            should be ON or OFF based on environmental and occupancy inputs.
-            Monitor predictions, explore usage history, and review estimated
-            energy costs from one dashboard.
+            An intelligent classroom lighting dashboard using machine
+            learning to support lighting recommendations. Monitor
+            predictions, explore usage history, estimate energy costs,
+            and review model evaluation results.
         </p>
     </div>
     """,
@@ -360,28 +311,25 @@ st.markdown(
 header_left, header_right = st.columns([3, 1])
 
 with header_left:
-    st.markdown(
-        '<p class="small-muted">DECISION SUPPORT • MACHINE LEARNING • ENERGY AWARENESS</p>',
-        unsafe_allow_html=True,
+    st.caption(
+        "DECISION SUPPORT • MACHINE LEARNING • ENERGY AWARENESS"
     )
 
 with header_right:
-    st.markdown(
-        f'<p style="text-align:right;color:#B6C5B9;font-size:12px;">'
-        f'Last page load: {datetime.now().strftime("%d %b %Y, %H:%M")}'
-        f'</p>',
-        unsafe_allow_html=True,
+    st.caption(
+        f"Last page load: {datetime.now().strftime('%d %b %Y, %H:%M')}"
     )
 
 
 # =========================================================
-# 5. SIDEBAR INPUTS
+# 6. SIDEBAR INPUTS
 # =========================================================
 st.sidebar.markdown("## ⚙️ Control Centre")
-st.sidebar.caption("Adjust the classroom conditions, then run a prediction.")
+st.sidebar.caption("Adjust classroom conditions and run a prediction.")
 st.sidebar.divider()
 
 with st.sidebar.form("classroom_input_form"):
+
     st.markdown("### Environmental inputs")
 
     lux = st.slider(
@@ -390,14 +338,13 @@ with st.sidebar.form("classroom_input_form"):
         max_value=1000,
         value=180,
         step=10,
-        help="Lower lux means the classroom is darker.",
     )
 
     motion_label = st.selectbox(
         "Motion detected?",
-        options=["Yes", "No"],
-        index=0,
+        ["Yes", "No"],
     )
+
     motion = 1 if motion_label == "Yes" else 0
 
     hour = st.slider(
@@ -405,14 +352,13 @@ with st.sidebar.form("classroom_input_form"):
         min_value=0,
         max_value=23,
         value=10,
-        help="24-hour clock: 10 means 10:00 AM.",
     )
 
     scheduled_label = st.selectbox(
         "Scheduled school day?",
-        options=["Yes", "No"],
-        index=0,
+        ["Yes", "No"],
     )
+
     scheduled_day = 1 if scheduled_label == "Yes" else 0
 
     st.markdown("### Energy estimate settings")
@@ -423,7 +369,6 @@ with st.sidebar.form("classroom_input_form"):
         max_value=5000,
         value=100,
         step=10,
-        help="Estimated total power of the lighting being assessed.",
     )
 
     hours_per_day = st.slider(
@@ -446,7 +391,6 @@ with st.sidebar.form("classroom_input_form"):
         max_value=10000.0,
         value=300.0,
         step=25.0,
-        help="Replace the example with your applicable tariff.",
     )
 
     submitted = st.form_submit_button(
@@ -456,13 +400,13 @@ with st.sidebar.form("classroom_input_form"):
 
 st.sidebar.divider()
 st.sidebar.markdown("### Model information")
-st.sidebar.caption("Algorithm: saved machine-learning classifier")
-st.sidebar.caption(f"Input features: {', '.join(model_features)}")
+st.sidebar.caption(f"Classifier: {type(model).__name__}")
+st.sidebar.caption(f"Features: {', '.join(model_features)}")
 st.sidebar.caption(f"Model file: {MODEL_PATH.name}")
 
 
 # =========================================================
-# 6. PREPARE INPUTS AND RUN PREDICTION
+# 7. PREDICTION
 # =========================================================
 available_values = {
     "lux": lux,
@@ -471,13 +415,14 @@ available_values = {
     "scheduled_day": scheduled_day,
 }
 
-# Build the input in the exact feature order used during training.
 try:
     input_data = pd.DataFrame(
-        [{
-            feature: available_values[feature]
-            for feature in model_features
-        }],
+        [
+            {
+                feature: available_values[feature]
+                for feature in model_features
+            }
+        ],
         columns=model_features,
     )
 
@@ -486,22 +431,18 @@ try:
 
     if prediction not in ("ON", "OFF"):
         st.error(
-            f"The model returned '{raw_prediction}' instead of ON or OFF. "
-            "Check the labels used when training the model."
+            f"Model returned '{raw_prediction}'. "
+            "Expected ON or OFF. Check the model's target labels."
         )
         st.stop()
 
 except Exception as exc:
-    st.error(
-        "Prediction failed. The feature names expected by the model "
-        "may not match the dashboard inputs."
-    )
+    st.error("Prediction failed. Check the model's input features.")
     st.code(f"Model features: {model_features}")
-    st.caption(f"Technical detail: {exc}")
+    st.caption(str(exc))
     st.stop()
 
 
-# Keep history in this browser session.
 if "prediction_history" not in st.session_state:
     st.session_state.prediction_history = []
 
@@ -511,21 +452,23 @@ if "last_prediction" not in st.session_state:
 if submitted:
     st.session_state.last_prediction = prediction
 
-    st.session_state.prediction_history.append({
-        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Light intensity (lux)": lux,
-        "Motion": motion_label,
-        "Hour": hour,
-        "Scheduled day": scheduled_label,
-        "Prediction": prediction,
-        "Lighting power (W)": bulb_power,
-    })
+    st.session_state.prediction_history.append(
+        {
+            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Light intensity (lux)": lux,
+            "Motion": motion_label,
+            "Hour": hour,
+            "Scheduled day": scheduled_label,
+            "Prediction": prediction,
+            "Lighting power (W)": bulb_power,
+        }
+    )
 
 display_prediction = st.session_state.last_prediction
 
 
 # =========================================================
-# 7. MAIN PREDICTION RESULT
+# 8. MAIN PREDICTION RESULT
 # =========================================================
 st.markdown(
     '<div class="section-heading">01 / Live classroom recommendation</div>',
@@ -536,12 +479,10 @@ if display_prediction == "ON":
     st.markdown(
         """
         <div class="recommendation recommendation-on">
-            <div class="status-pill">LIGHTING RECOMMENDED</div>
             <h2>💡 Lights should be ON</h2>
             <p>
-                According to the trained model, the current classroom
-                conditions support switching the lights on. Review the
-                sensor inputs and confirm the recommendation before acting.
+                The trained model recommends switching the lights on
+                under the current classroom conditions.
             </p>
         </div>
         """,
@@ -551,12 +492,10 @@ else:
     st.markdown(
         """
         <div class="recommendation recommendation-off">
-            <div class="status-pill">ENERGY-SAVING OPPORTUNITY</div>
             <h2>🌙 Lights should be OFF</h2>
             <p>
-                According to the trained model, the current conditions
-                support keeping the lights off. Verify that natural light
-                and classroom safety requirements are sufficient.
+                The trained model recommends keeping the lights off
+                under the current classroom conditions.
             </p>
         </div>
         """,
@@ -565,73 +504,56 @@ else:
 
 if not submitted:
     st.info(
-        "Showing the model's result for the default inputs. Adjust the "
-        "controls in the sidebar and select **Run Prediction** to test "
-        "another classroom scenario."
+        "Showing a prediction for the default inputs. "
+        "Change the sidebar values and click Run Prediction."
     )
 
 
 # =========================================================
-# 8. KPI CARDS
+# 9. KPI CARDS
 # =========================================================
 monthly_energy_kwh = (
     bulb_power * hours_per_day * days_per_month / 1000
 )
+
 monthly_cost = monthly_energy_kwh * electricity_rate
+
 daily_energy_kwh = bulb_power * hours_per_day / 1000
 
-if display_prediction == "OFF":
-    potential_energy_kwh = monthly_energy_kwh
-    potential_cost = monthly_cost
-else:
-    potential_energy_kwh = 0
-    potential_cost = 0
+potential_energy_kwh = (
+    monthly_energy_kwh if display_prediction == "OFF" else 0
+)
+
+potential_cost = (
+    monthly_cost if display_prediction == "OFF" else 0
+)
 
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-with kpi1:
-    st.metric(
-        "Model recommendation",
-        display_prediction,
-        help="Output from the saved machine-learning model.",
-    )
-
-with kpi2:
-    st.metric(
-        "Light intensity",
-        f"{lux} lux",
-        help="Current value entered in the dashboard.",
-    )
-
-with kpi3:
-    st.metric(
-        "Motion status",
-        motion_label,
-        help="Occupancy indicator entered by the user.",
-    )
-
-with kpi4:
-    st.metric(
-        "Lighting power",
-        f"{bulb_power} W",
-        help="Configured power used for the energy estimate.",
-    )
+kpi1.metric("Model recommendation", display_prediction)
+kpi2.metric("Light intensity", f"{lux} lux")
+kpi3.metric("Motion status", motion_label)
+kpi4.metric("Lighting power", f"{bulb_power} W")
 
 
 # =========================================================
-# 9. TABS: ANALYTICS, HISTORY, MODEL DETAILS
+# 10. DASHBOARD TABS
 # =========================================================
-tab_analytics, tab_history, tab_about = st.tabs([
-    "📊 Energy Analytics",
-    "🗂️ Prediction History",
-    "🧠 Model & Project",
-])
+tab_analytics, tab_history, tab_evaluation, tab_about = st.tabs(
+    [
+        "📊 Energy Analytics",
+        "🗂️ Prediction History",
+        "✅ Model Evaluation",
+        "🧠 Model & Project",
+    ]
+)
 
 
 # =========================================================
 # TAB 1: ENERGY ANALYTICS
 # =========================================================
 with tab_analytics:
+
     st.markdown(
         '<div class="section-heading">Energy use and cost estimates</div>',
         unsafe_allow_html=True,
@@ -639,52 +561,36 @@ with tab_analytics:
 
     a1, a2, a3 = st.columns(3)
 
-    with a1:
-        st.metric(
-            "Daily energy if ON",
-            f"{daily_energy_kwh:.2f} kWh",
-        )
-
-    with a2:
-        st.metric(
-            "Monthly energy if ON",
-            f"{monthly_energy_kwh:.2f} kWh",
-        )
-
-    with a3:
-        st.metric(
-            "Estimated monthly cost if ON",
-            f"{monthly_cost:,.0f} RWF",
-        )
+    a1.metric("Daily energy if ON", f"{daily_energy_kwh:.2f} kWh")
+    a2.metric("Monthly energy if ON", f"{monthly_energy_kwh:.2f} kWh")
+    a3.metric("Estimated monthly cost if ON", f"{monthly_cost:,.0f} RWF")
 
     st.markdown(
         """
         <div class="panel">
             <strong>How to interpret these estimates</strong>
-            <p class="small-muted">
-                These calculations assume the configured lighting load runs
-                for the selected hours and operating days. If the model
-                recommends OFF, the displayed potential energy and cost
-                represent a hypothetical upper estimate of energy avoided
-                if that load would otherwise have run for the entire period.
-                This is not a measured saving or a prediction of actual
-                monthly performance.
+            <p>
+                These calculations assume the lighting load operates
+                for the selected hours and operating days. These are
+                hypothetical estimates, not measured energy savings.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    energy_data = pd.DataFrame({
-        "Scenario": [
-            "Lights ON for configured hours",
-            "Hypothetical energy avoided if OFF",
-        ],
-        "Energy (kWh)": [
-            monthly_energy_kwh,
-            potential_energy_kwh,
-        ],
-    })
+    energy_data = pd.DataFrame(
+        {
+            "Scenario": [
+                "Lights ON for configured hours",
+                "Hypothetical energy avoided if OFF",
+            ],
+            "Energy (kWh)": [
+                monthly_energy_kwh,
+                potential_energy_kwh,
+            ],
+        }
+    )
 
     fig_energy = px.bar(
         energy_data,
@@ -702,30 +608,16 @@ with tab_analytics:
         font_color="#F3F6F1",
         title_font_color="#E7C76A",
         showlegend=False,
-        margin=dict(l=20, r=20, t=60, b=20),
-    )
-    fig_energy.update_xaxes(
-        gridcolor="#35483A",
-        tickfont_color="#D5E0D6",
-    )
-    fig_energy.update_yaxes(
-        gridcolor="#35483A",
-        title_font_color="#B6C5B9",
     )
 
     st.plotly_chart(fig_energy, use_container_width=True)
-
-    st.caption(
-        f"At the entered tariff, the configured lighting load would cost "
-        f"approximately {monthly_cost:,.0f} RWF per month if it ran for "
-        f"all configured hours and days."
-    )
 
 
 # =========================================================
 # TAB 2: PREDICTION HISTORY
 # =========================================================
 with tab_history:
+
     st.markdown(
         '<div class="section-heading">Prediction records</div>',
         unsafe_allow_html=True,
@@ -734,16 +626,15 @@ with tab_history:
     history = st.session_state.prediction_history
 
     if history:
+
         history_df = pd.DataFrame(history)
 
         h1, h2 = st.columns(2)
 
-        with h1:
-            st.metric("Predictions recorded", len(history_df))
+        h1.metric("Predictions recorded", len(history_df))
 
-        with h2:
-            off_count = int((history_df["Prediction"] == "OFF").sum())
-            st.metric("OFF recommendations", off_count)
+        off_count = int((history_df["Prediction"] == "OFF").sum())
+        h2.metric("OFF recommendations", off_count)
 
         st.dataframe(
             history_df.iloc[::-1],
@@ -758,7 +649,6 @@ with tab_history:
             data=csv_data,
             file_name="smart_classroom_prediction_history.csv",
             mime="text/csv",
-            use_container_width=True,
         )
 
         prediction_counts = (
@@ -790,25 +680,161 @@ with tab_history:
 
         st.plotly_chart(fig_history, use_container_width=True)
 
-        if st.button("Clear session history", type="secondary"):
+        if st.button("Clear session history"):
             st.session_state.prediction_history = []
             st.rerun()
 
-        st.caption(
-            "History is stored in Streamlit's current session. It is not "
-            "a permanent database and may be lost when the session resets."
-        )
     else:
         st.info(
-            "No prediction history yet. Use the sidebar and click "
-            "'Run Prediction' to create your first record."
+            "No prediction history yet. Run a prediction using the sidebar."
         )
 
 
 # =========================================================
-# TAB 3: MODEL AND PROJECT DETAILS
+# TAB 3: MODEL EVALUATION
+# =========================================================
+with tab_evaluation:
+
+    st.markdown(
+        '<div class="section-heading">Evaluation on the held-out test set</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.success(
+        "Kaggle evaluation results loaded successfully. "
+        "No separate metrics.json file is required."
+    )
+
+    st.markdown(
+        f"**Selected model:** {EVALUATION['model_name']}  \n"
+        f"**Classification threshold:** {EVALUATION['threshold']}"
+    )
+
+    # Main metrics
+    e1, e2, e3, e4 = st.columns(4)
+
+    e1.metric(
+        "Accuracy",
+        f"{EVALUATION['accuracy'] * 100:.2f}%",
+    )
+
+    e2.metric(
+        "Motion Precision",
+        f"{EVALUATION['precision_motion'] * 100:.2f}%",
+    )
+
+    e3.metric(
+        "Motion Recall",
+        f"{EVALUATION['recall_motion'] * 100:.2f}%",
+    )
+
+    e4.metric(
+        "Motion F1-score",
+        f"{EVALUATION['f1_motion'] * 100:.2f}%",
+    )
+
+    st.divider()
+
+    # Confusion matrix
+    st.markdown("### Confusion Matrix")
+
+    cm = EVALUATION["confusion_matrix"]
+
+    cm_df = pd.DataFrame(
+        cm,
+        index=["Actual No Motion", "Actual Motion Detected"],
+        columns=["Predicted No Motion", "Predicted Motion Detected"],
+    )
+
+    fig_cm = px.imshow(
+        cm_df,
+        text_auto=True,
+        aspect="auto",
+        color_continuous_scale=[
+            "#1D2721",
+            "#347C50",
+            "#78D99A",
+        ],
+        title="Confusion Matrix — Logistic Regression",
+    )
+
+    fig_cm.update_layout(
+        paper_bgcolor="#1D2721",
+        plot_bgcolor="#1D2721",
+        font_color="#F3F6F1",
+        title_font_color="#E7C76A",
+    )
+
+    st.plotly_chart(fig_cm, use_container_width=True)
+
+    st.dataframe(
+        cm_df,
+        use_container_width=True,
+    )
+
+    st.caption(
+        "Rows represent actual classes; columns represent predicted classes."
+    )
+
+    st.divider()
+
+    # Classification report
+    st.markdown("### Classification Report")
+
+    report_df = pd.DataFrame(
+        EVALUATION["classification_report"]
+    ).T
+
+    st.dataframe(
+        report_df.style.format(
+            {
+                "precision": "{:.2f}",
+                "recall": "{:.2f}",
+                "f1-score": "{:.2f}",
+                "support": "{:.0f}",
+            }
+        ),
+        use_container_width=True,
+    )
+
+    st.divider()
+
+    st.markdown("### Performance interpretation")
+
+    st.markdown(
+        """
+        - The model achieved **89.83% accuracy** on the held-out test set.
+        - The No Motion class has stronger performance than the Motion Detected class.
+        - The Motion Detected recall is **62.71%**, meaning the model identified
+          approximately 63% of the actual motion cases.
+        - Motion precision is **15.55%**, indicating that many predicted motion
+          events were false positives.
+        - The dataset contains substantially more No Motion samples than Motion
+          Detected samples. This class imbalance affects the evaluation.
+        """
+    )
+
+    st.warning(
+        "These metrics describe performance on the Kaggle test dataset. "
+        "They do not guarantee the same performance in a real classroom."
+    )
+
+    # Download evaluation report
+    report_csv = report_df.to_csv().encode("utf-8")
+
+    st.download_button(
+        "⬇️ Download classification report CSV",
+        data=report_csv,
+        file_name="smart_classroom_classification_report.csv",
+        mime="text/csv",
+    )
+
+
+# =========================================================
+# TAB 4: MODEL AND PROJECT DETAILS
 # =========================================================
 with tab_about:
+
     st.markdown(
         '<div class="section-heading">About this system</div>',
         unsafe_allow_html=True,
@@ -818,33 +844,33 @@ with tab_about:
         """
         <div class="panel">
             <h3>Project objective</h3>
-            <p class="small-muted">
+            <p>
                 Demonstrate how machine learning can support classroom
-                lighting decisions using light intensity, motion and time
-                of day. The dashboard presents a recommendation rather
-                than directly controlling electrical equipment.
+                lighting decisions using classroom conditions and
+                environmental information.
             </p>
         </div>
 
         <div class="panel">
             <h3>System workflow</h3>
-            <p class="small-muted">
+            <p>
                 1. Enter classroom conditions.<br>
-                2. Arrange the input data using the model's saved feature names.<br>
-                3. Run the trained classifier.<br>
-                4. Display an ON/OFF recommendation.<br>
-                5. Review energy estimates and export the recorded predictions.
+                2. Prepare the input features.<br>
+                3. Run the trained model.<br>
+                4. Display the lighting recommendation.<br>
+                5. Review energy estimates and prediction history.<br>
+                6. Inspect the held-out test evaluation.
             </p>
         </div>
 
         <div class="panel">
             <h3>Current limitations</h3>
-            <p class="small-muted">
-                This prototype uses manually entered inputs. No physical
-                sensor, relay, microcontroller or lighting circuit is
-                connected through this dashboard. Prediction history is
-                session-based. Real-world performance must be validated
-                using representative classroom data before operational use.
+            <p>
+                This prototype uses manually entered inputs.
+                Physical sensor, relay, and lighting control integration
+                must be verified separately. Prediction history is
+                session-based. Real-world performance requires validation
+                with representative classroom data.
             </p>
         </div>
         """,
@@ -867,17 +893,20 @@ with tab_about:
         st.code(type(model).__name__)
 
         st.write("**Current input row**")
-        st.dataframe(input_data, use_container_width=True, hide_index=True)
+        st.dataframe(
+            input_data,
+            use_container_width=True,
+            hide_index=True,
+        )
 
     st.warning(
-        "If the model was trained on synthetic examples, its results "
-        "demonstrate learning of those examples—not verified accuracy "
-        "in a real classroom."
+        "The model's predictions should be validated against real "
+        "classroom observations before operational deployment."
     )
 
 
 # =========================================================
-# 10. FOOTER
+# 11. FOOTER
 # =========================================================
 st.divider()
 
